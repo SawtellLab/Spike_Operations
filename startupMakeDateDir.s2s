@@ -1,0 +1,42 @@
+'New Directory Maker - if saved as startup.s2s in the spike2 folder (e.g., C:\Spike7\startup.s2s)
+'NEEDS TO BE SAVED AS startup.s2s to work 
+'will prompt you to make a new directory for today's date when you start spike.
+'Armen Enikolopov Dec 2015.
+
+'Save to this directory. 
+'NOTE THAT YOU HAVE TO USE DOUBLE \\s for DIRECTORY NAMES.
+' e.g. c:\mypath\  should be c:\\mypath\\
+var baseDir$ := "F:\\rig01 backup\\spikedata";
+'END USER ADJUSTABLE VARIABLES.
+
+
+
+var time%; 'placeholder for datetime info you don't need.
+var year%;
+var month%;
+var day%;
+var dateStr$;
+var newPath$;
+var oldPath$;
+var ret%; 
+
+TimeDate(time%,time%,time%,day%,month%,year%);  'Determine Date
+dateStr$ := Print$("%4.d%2.d%2.d",year%,month%,day%); 'Make the date string
+newPath$ := Print$("%s\\%s\\",baseDir$,dateStr$);
+
+oldPath$ := FilePath$(); 'record what the old path was
+ret% := FilePathSet(newPath$,0,0);  'try chdir'ing to new dir to see if it exists
+printlog("Trying to set old path: %d\n",FilePathSet(oldPath$,0,0));    'switch back to old path
+
+if ret% <> 0 then 'if newpath directory does not exist
+    ret% := Query(Print$("Confirm creation of directory: %s",newPath$),"OK","Cancel");
+    if ret% = 1 then
+        printlog("Setting path: %s\n",newPath$);
+        ret% := FilePathSet(newPath$,0,1);
+        if ret% <> 0 then
+            Message("Failed to create directory %s\n Error: %d",newPath$,ret%);
+        endif;    
+    endif;
+endif;
+
+

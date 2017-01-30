@@ -1,0 +1,21 @@
+'continuously optimises a selected channel.
+'I use this when searching for receptive fields using 
+'sine waves with a large range of amplitudes.
+'Armen Enikolopov April 2016
+
+var ChanToOptimise% := 4; 
+
+DoToolbar();   'Try it out
+Halt;
+
+Func DoToolbar()    'Set your own name...
+ToolbarClear();     'Remove any old buttons
+ToolbarSet(0, "", idle%);   'Idle routine
+ToolbarSet(1, "&Quit");    'This button returns its number
+return Toolbar("Your prompt", 1023);
+end;
+
+Func idle%()   'Button 0 routine
+Optimise(ChanToOptimise%);
+return 1;  'This leaves toolbar active
+end;

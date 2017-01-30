@@ -1,0 +1,109 @@
+'Makes PSTHs of a chan using as triggers markers in another chan
+'searches the marker chan for all markers, then masks them one by one.
+'edit the below parameters to change psth params. 
+'Armen Enikolopov, Sept 2016
+
+
+
+'''''''''''''' SHORT BIT BEFORE EDITABLEPARAMETERS 
+'(need this here because otherwise MaxTime() can potentially not work.
+if ViewKind() <> 0 then
+    Message("Current view is not a time view. This function only works on time views.");
+    halt;
+endif
+''''''''''''''''''''''''''''''''''''''''''
+
+'''''''''''''' START EDITABLE PARAMETERS
+var PSTHmarkerChan% := 32; 
+var PSTHchan%  := 5; 
+VAR PSTHstart  := 0.0;
+var PSTHfinish := MaxTime(); 
+var PSTHwidth  := 0.225;
+var PSTHpre    := 0.025;
+var PSTHbinsize:= 0.002; 
+
+'''''''''''''' END EDITABLE PARAMETERS
+
+
+var startView% := View(); 
+
+
+
+
+'returns an array with all 
+Proc GetAllMarkers(chan%, mrklist%[],mrkmask%[])
+var code%[4]; 'this stores marker codes.
+
+
+var lastind%; 'location of last found marker in mrklist.
+var curpos; 'current position of search.
+var delta := 0.0001; 'don’t detect markers closer than this. 
+
+resize mrklist%[256]; 'this stores a list of markers that exist.
+resize mrkmask%[256]; 
+ArrConst(mrkmask%,0) ;
+ArrConst(mrklist%,0); 'set them all to 0. 
+
+'should really remove all filters first. or possibly save and restore?
+curpos := -0.1; 'start negative to find all cursors (including those at 0, if any)
+lastind% :=-1; 'no marks yet.
+while (curpos <> -1) do 'curpos gives -1 when you are done running through the whole chan.
+    
+    curpos := NextTime(chan%, curpos, code%[]);
+    if mrkmask%[code%[0]] <> 1 then
+        mrkmask%[code%[0]] := 1;  'mark that we’ve seen this one before;
+        lastind% := lastind% +1; 
+        mrklist%[lastind%] := code%[0]; 
+    endif
+wend;
+
+'chop array here.
+resize mrklist%[lastind%+1];
+
+end
+
+var markers%[1];
+var mask%[1]; 
+GetAllMarkers(PSTHmarkerChan%, markers%,mask%);
+ArrSort(markers%);
+var i%;
+var singlemask%[256]; 
+var oldmask%[256][4]; 
+var emptymask%[256][4];
+var windtitle$; 
+
+ArrConst(emptymask%,0); 
+
+var allevents[100000]; 
+var cnt%; 
+Printlog("Note marker is not presented as Hex\n"); 
+Printlog("\n #  Marker  Num Events\n"); 
+
+MarkMask(PSTHmarkerChan%,oldmask%,0); 'record the old mask
+for i% := 0 to Len(markers%)-1 do
+    View(startView%); 
+    ArrConst(singlemask%,0); 
+    singlemask%[markers%[i%]] := 1; 'choose this one for now. 
+    MarkMask(PSTHmarkerChan%,1);
+    MarkMask(PSTHmarkerChan%,singlemask%,1); 
+    cnt% := ChanData(PSTHmarkerChan%, allevents, 0,maxtime());
+    printlog(Print$("%2d  %-2d      %d\n", i%+1,markers%[i%],cnt%)); 
+    
+    'OK HERE WE MAKE THE PSTH.
+    var v17%; 'View created by SetPsth
+'    var v16% := ViewFind("20160914_001.smr");
+'    FrontView(v16%);
+    v17%:=SetPsth(PSTHchan%,floor(PSTHwidth/PSTHbinsize),PSTHbinsize,PSTHpre, PSTHmarkerChan%,3);
+    WindowVisible(1);
+    Process(PSTHstart, PSTHfinish, 1, 1);
+    
+    'Let's rename the window to specify what the marker is. 
+    windtitle$ := WindowTitle$(); 
+    windtitle$ := Print$("%s_Marker%d",windtitle$,markers%[i%]); 
+    WindowTitle$(windtitle$); 
+
+next
+
+View(startView%);
+'ProcessAll(0,MaxTime()); 
+MarkMask(PSTHmarkerChan%, oldmask%, 1); 'copy the old mask. 

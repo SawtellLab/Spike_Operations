@@ -1,0 +1,29 @@
+'Close Carefully - Armen Enikolopov, 2016 08 02
+'Close all XY and Result views without prompting to save. 
+'Prompt to save any unsaved time views. 
+
+var list%[100],i%, n%;         'Assume no more than 99 views
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+''''''' FIND AND CLOSE ALL XY AND RESULTS VIEWS.
+'''''''' do not prompt to save.
+
+n% := ViewList(list%[], 16 + 4096);      'Get list of all XY views and all Results views. 
+'Close all views found above without propting. 
+for i%:=1 to n% do   'Iterate round all the views
+    view(list%[i%]); 
+    FrontView(list%[i%]); 
+    FileClose(0,-1); 'close current view without prompting to save.
+   next;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''FIND AND CLOSE ALL TIME VIEWS. Prompt to save
+
+n% := ViewList(list%[], 1); 'Get list of all Time views
+for i%:=1 to n% do   'Iterate round all views from above
+    view(list%[i%]); 
+    FrontView(list%[i%]); 
+    FileClose(0,0); 'close current view, prompting to save. 
+   next;

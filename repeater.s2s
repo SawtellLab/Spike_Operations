@@ -1,0 +1,136 @@
+''Repeater, Armen Enikolopov April 10, 2015, Sawtell Lab Columbia University. 
+'' This code reads an event channel and then replays the sequence of events as keypresses. 
+
+''This to edit: 
+''  keyToPlay$    This is the key that will be pressed
+'' inputChan%     Channel number, Event or Marker/Keyboard channel to be repeated, can be events, can be keypresses.
+'' keyboardChan%  keyboard Channel. this is only used to calculate timing error. 
+
+var keyToPlay$ := "W";
+var keyboardChan% := 31; 
+var inputChan% := 1;
+
+
+
+var CursorStart% := 1; 
+var CursorFinish%:= 3;
+var CursorReplayStart% := 2;
+var CursorReplayFinish% := 4;
+
+DoToolbar(); 
+Halt;
+
+Func DoToolbar()    'Set your own name...
+ToolbarClear();     'Remove any old buttons
+ToolbarSet(1, "&Quit");    'This button returns its number
+ToolbarSet(2, "Start Record", startRec%);  
+ToolbarSet(3, "Replay", replay%);   'Link to function
+ToolbarEnable(3,0); 
+
+Seconds(0,1);   ''CRITICAL, NEED TO HAVE FAST RESOLUTION.
+
+return Toolbar("Repeater script", 1023);
+
+end;
+
+Func startRec%()
+ToolbarEnable(3,0); 
+ToolbarSet(2, "Stop Record", stopRec%);
+
+FrontView(SampleHandle(0));
+View(SampleHandle(0)); 
+
+CursorDelete(cursorStart%);
+CursorNew(Maxtime(),CursorStart%); 
+return 1;  
+end;
+
+
+Func stopRec%()
+ToolbarEnable(3,1);
+ToolbarSet(2, "Start Record", startRec%); 
+
+CursorDelete(CursorFinish%); 
+CursorNew(Maxtime(),CursorFinish%); 
+return 1;  
+end;
+
+Func replay%() 
+
+
+var sectionStart := Cursor(CursorStart%); 
+var sectionFinish := Cursor(CursorFinish%);
+
+CursorDelete(CursorReplayStart%); 
+CursorNew(MaxTime(), CursorReplayStart%); 
+var delay := MaxTime() - sectionStart;
+var sectionLength :=  sectionFinish - sectionStart;
+
+var nextEvent;
+
+var startTime := MaxTime();
+var finishTime := startTime + sectionLength; 
+
+
+var lastPlayed := 0; 
+var delTime, prevEvent := 0;
+
+delTime := MaxTime() - delay; 
+nextEvent :=  NextTime(inputChan%, delTime);
+
+prevEvent := nextEvent;
+
+
+while MaxTime() - delay < sectionFinish  do
+    
+    
+    delTime := MaxTime() - delay; 
+    nextEvent :=  NextTime(inputChan%, delTime);
+    if (nextEvent <> prevEvent) then 
+        SampleKey(keyToPlay$);
+        'PrintLog(print$("curr: %f (%f) next: %f last: %f\n", MaxTime(), MaxTime() - delay, nextEvent, lastPlayed));
+        
+
+endif;         
+prevEvent := nextEvent;    
+wend; 
+CursorDelete(CursorReplayFinish%); 
+CursorNew(MaxTime(), CursorReplayFinish%); 
+
+
+var inputEvents[1];
+var outputEvents[1];
+
+
+var numEvents% := Count(inputChan%,Cursor(CursorStart%),Cursor(CursorFinish%)); 
+resize inputEvents[numEvents%];
+resize outputEvents[numEvents%];
+
+ChanData(inputChan%,inputEvents,Cursor(CursorStart%),Cursor(CursorFinish%));
+ChanData(keyboardChan%,outputEvents,Cursor(CursorReplayStart%),Cursor(CursorReplayFinish%));
+
+ArrSub(inputEvents,outputEvents);
+
+var meanDiff, stdDiff; 
+var sumDiff; 
+ArrSum(inputEvents,meanDiff);
+ArrSub(inputEvents,inputEvents[0]);
+ArrMul(inputEvents,1000); 
+sumDiff := ArrSum(inputEvents,meanDiff,stdDiff);
+
+Message(print$("Replayed %d events, mean timing error: %.2fms (sd: %.2fms)",numEvents%, meanDiff,stdDiff));
+
+return 1;  
+end;
+
+func arrMean(arr[])
+var s:=0; 
+var length := Len(arr); 
+var i%;
+
+for i% := 0 to length-1 do
+    s := arr[i%]; 
+next;
+
+return s; 
+end
